@@ -1,0 +1,112 @@
+{
+  "theme": "Archetype 4 (Swiss & High-Contrast) - Dark/Light toggleable",
+  "archetype": "Swiss & High-Contrast",
+  "emotion": "Objective, Reliable, Frictionless, High-Tech",
+  "fonts": {
+    "heading": "Chivo",
+    "body": "IBM Plex Sans",
+    "fallback": "sans-serif",
+    "pairing_strategy": "Radical weight contrast (Black vs Light). Do not default to 'Bold'. Use font-black for major titles and font-light for elegance."
+  },
+  "typography": {
+    "h1": "text-4xl sm:text-5xl lg:text-6xl tracking-tighter font-black",
+    "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight font-black",
+    "h3": "text-xl sm:text-2xl tracking-tight font-medium",
+    "h4": "text-lg sm:text-xl tracking-tight font-medium",
+    "body": "text-base leading-relaxed text-foreground",
+    "label": "text-xs font-bold tracking-[0.2em] uppercase text-muted-foreground",
+    "nav_links": "text-sm font-medium tracking-wide"
+  },
+  "colors": {
+    "light": {
+      "base": "#F9F9FB",
+      "surface": "#FFFFFF",
+      "primary": "#0044FF",
+      "primary_hover": "#3366FF",
+      "text": "#0A0B10",
+      "border": "#E5E7EB",
+      "muted": "#F3F4F6",
+      "muted_foreground": "#6B7280",
+      "success": "#00A859",
+      "destructive": "#FF2222"
+    },
+    "dark": {
+      "base": "#0A0B10",
+      "surface": "#12141C",
+      "primary": "#3366FF",
+      "primary_hover": "#5588FF",
+      "text": "#F9F9FB",
+      "border": "#272A38",
+      "muted": "#1B1D28",
+      "muted_foreground": "#9CA3AF",
+      "success": "#00CC6A",
+      "destructive": "#FF4444"
+    }
+  },
+  "spacing_and_layout": {
+    "container_padding": "p-6 md:p-12 lg:p-16",
+    "bento_gap": "gap-4 md:gap-6",
+    "grid_strategy": "Control Room Grid (Dense, Data Correlation). grid-cols-1 md:grid-cols-3 lg:grid-cols-4.",
+    "border_radius": "rounded-none",
+    "card_style": "Flat background, 1px subtle border (border-border), no shadow. On hover: slight lift, subtle shadow, darker border.",
+    "alignment": "Paragraphs/Labels: left-aligned. Buttons relative to container.",
+    "optical_alignment": "Icons in buttons should use 4px padding towards the text."
+  },
+  "motion_and_interactions": {
+    "hover": "Explicitly set text color on hover (e.g., hover:bg-slate-900 hover:text-white). Lighter hue for active states.",
+    "focus": "focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background",
+    "transitions": "transition-colors duration-200 ease-in-out or transition-transform for scaling.",
+    "toasts": "Use Sonner. Ensure high contrast and snappy entrance/exit. Success toasts must use the defined 'success' color."
+  },
+  "surfaces": {
+    "header": "Solid Background with a hard bottom border (1px border-border). Not glassmorphism, as this is a high-contrast functional dashboard.",
+    "admin_login_panel": "Grid Borders (The 'Technical' Look). Exposed skeleton, brutalist edges.",
+    "webcam_container": "Tracing Beam or Reticle corners. 1px border with a soft inner shadow to denote 'active recording' area."
+  },
+  "components_strategy": {
+    "buttons": "Sharp edges (rounded-none). High contrast. Primary uses solid brand color, Secondary uses outline with transparent background.",
+    "forms": "Shadcn Form components. Labels uppercase tracking-[0.2em] text-xs. Inputs with sharp corners, 1px border. No floating labels.",
+    "tables": "Shadcn Table. Left-aligned data. Dense padding (py-2 px-4). Distinct hover state on rows (bg-muted).",
+    "charts": "Recharts. Use monochromatic or brand-tinted bars/lines to maintain the brutalist feel. Avoid rainbow colors.",
+    "toast": "Sonner for attendance marking success. Real-time, anchored bottom-right."
+  },
+  "media": {
+    "image_urls": [
+      {
+        "url": "https://images.pexels.com/photos/22039140/pexels-photo-22039140.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "login_background",
+        "description": "Brutalist university architecture, to be used as a half-screen background image on the Admin Login page, with a monochrome/dark overlay (bg-black/50) to ensure high contrast."
+      },
+      {
+        "url": "https://images.pexels.com/photos/3137064/pexels-photo-3137064.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "abstract_pattern",
+        "description": "Black and white geometric pattern. Can be used subtly (opacity 5%) in the background of the main dashboard to add texture without reducing readability."
+      }
+    ],
+    "icons": {
+      "library": "lucide-react",
+      "usage": "Use stroke-width 1.5 for elegance or 2.5 for bold brutalist weight. Use icons for 'Users', 'Camera', 'Video', 'LogOut', 'Download' (CSV export)."
+    }
+  },
+  "features_spec": {
+    "admin_login": "JWT auth. Split layout (left: form, right: architecture image).",
+    "user_registration": "Form + Live Webcam feed to capture face. Needs 'Capture' button.",
+    "face_recognition_attendance": "Full-screen or large centered webcam view. Real-time bounding boxes drawn via OpenCV (backend) and streamed, or handled purely in backend with a static snapshot feed. Successful match triggers Sonner toast.",
+    "attendance_dashboard": "Tabs: 'Overview', 'Logs', 'Users'. Overview shows Recharts activity. Logs shows date-filtered table. Users shows registered faces.",
+    "export_csv": "Prominent button in the Logs table header.",
+    "theme_toggle": "Icon button in header. Switches dark/light classes on html tag."
+  },
+  "accessibility": {
+    "data_testid": "All interactive and key informational elements MUST include a data-testid attribute (e.g., data-testid='login-submit-button', data-testid='capture-face-btn').",
+    "contrast": "Text contrast must meet APCA or WCAG AA standards. Ensure hover/focus states are clearly visible."
+  },
+  "instructions_to_main_agent": [
+    "Follow the theme strictly: Archetype 4 (Swiss & High Contrast). No card shadows, use sharp corners (rounded-none).",
+    "Use Chivo for headings and IBM Plex Sans for body text. Add these fonts via Google Fonts in index.html.",
+    "Install required dependencies: react-webcam, recharts, sonner, lucide-react.",
+    "Ensure the layout relies heavily on grids (Control Room mode) with gap-4 or gap-6. Keep it dense and scannable.",
+    "The webcam component must have a clear visual frame (e.g., reticle corners or bright 1px border) to indicate active monitoring.",
+    "All Shadcn components (Button, Input, Table, Dialog, Toast) must be configured to use rounded-none and strict borders to match the brutalist aesthetic.",
+    "Use standard data-testid attributes for testing."
+  ]
+}
