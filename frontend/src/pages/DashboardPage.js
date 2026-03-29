@@ -35,6 +35,8 @@ import {
   CalendarIcon,
   Trash2,
   Activity,
+  ShieldCheck,
+  UserPlus,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -45,6 +47,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState(null);
   const [logs, setLogs] = useState([]);
   const [users, setUsers] = useState([]);
+  const [admins, setAdmins] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -85,6 +88,17 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const fetchAdmins = useCallback(async () => {
+    try {
+      const { data } = await axios.get(`${API}/admins`, {
+        withCredentials: true,
+      });
+      setAdmins(data);
+    } catch (err) {
+      console.error("Failed to fetch admins", err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
@@ -95,7 +109,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (activeTab === "users") fetchUsers();
-  }, [activeTab, fetchUsers]);
+    if (activeTab === "admin") fetchAdmins();
+  }, [activeTab, fetchUsers, fetchAdmins]);
 
   const handleExport = async () => {
     try {
@@ -134,6 +149,20 @@ export default function DashboardPage() {
       fetchStats();
     } catch (err) {
       toast.error("Failed to delete user");
+    }
+  };
+
+  const handleDeleteAdmin = async (adminEmail) => {
+    if (!window.confirm(`Delete admin account ${adminEmail}? This action cannot be undone.`)) return;
+    try {
+      await axios.delete(`${API}/admins/${encodeURIComponent(adminEmail)}`, {
+        withCredentials: true,
+      });
+      toast.success("Admin deleted");
+      fetchAdmins();
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      toast.error(typeof detail === "string" ? detail : "Failed to delete admin");
     }
   };
 
@@ -181,6 +210,9 @@ export default function DashboardPage() {
           </TabsTrigger>
           <TabsTrigger value="users" data-testid="tab-users">
             Registered Users
+          </TabsTrigger>
+          <TabsTrigger value="admin" data-testid="tab-admin">
+            Admin Panel
           </TabsTrigger>
         </TabsList>
 
@@ -415,6 +447,98 @@ export default function DashboardPage() {
               </TableBody>
             </Table>
           </Card>
+        </TabsContent>
+        {/* ─── Admin Panel Tab ─── */}
+        <TabsContent value="admin" className="space-y-4 mt-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-black tracking-tight flex items-center gap-2">
+                <ShieldCheck size={22} className="text-primary" />
+                Admin Accounts
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Manage administrator access to the system
+              </p>
+            </div>
+          </div>
+
+          <Card className="border border-border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="font-bold text-xs tracking-wider uppercase">
+                    Name
+                  </TableHead>
+                  <TableHead className="font-bold text-xs tracking-wider uppercase">
+                    Email
+                  </TableHead>
+                  <TableHead className="font-bold text-xs tracking-wider uppercase">
+                    Role
+                  </TableHead>
+                  <TableHead className="font-bold text-xs tracking-wider uppercase">
+                    Created
+                  </TableHead>
+                  <TableHead className="font-bold text-xs tracking-wider uppercase">
+                    Actions
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {admins.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="text-center py-12 text-muted-foreground"
+                    >
+                      No admin accounts found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  admins.map((admin, i) => (
+                    <TableRow key={i} data-testid={`admin-row-${i}`}>
+                      <TableCell className="font-medium">
+                        {admin.name}
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {admin.email}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="default" className="bg-primary/10 text-primary border-0 font-semibold">
+                          {admin.role || "admin"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {admin.created_at?.split("T")[0]}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteAdmin(admin.email)}
+                          data-testid={`delete-admin-${i}`}
+                        >
+                          <Trash2 size={16} className="text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </Card>
+
+          <div className="p-4 border border-dashed border-border bg-muted/30 text-center">
+            <p className="text-sm text-muted-foreground">
+              New admins can register via the{" "}
+              <a
+                href="/signup"
+                className="text-primary font-medium hover:underline"
+                data-testid="admin-signup-link"
+              >
+                Sign Up page
+              </a>
+            </p>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

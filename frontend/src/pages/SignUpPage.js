@@ -4,15 +4,17 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, Eye, EyeOff } from "lucide-react";
+import { Shield, Eye, EyeOff, ArrowLeft } from "lucide-react";
 
-export default function LoginPage() {
+export default function SignUpPage() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login, user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, login } = useAuth();
   const navigate = useNavigate();
 
   if (authLoading) {
@@ -30,29 +32,56 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+    if (!name.trim()) {
+      setError("Name is required");
+      return;
+    }
+
     setLoading(true);
     try {
+      const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+      const response = await fetch(`${API}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name: name.trim(), email, password }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        const detail = data.detail;
+        if (typeof detail === "string") {
+          setError(detail);
+        } else if (Array.isArray(detail)) {
+          setError(detail.map((d) => d.msg || JSON.stringify(d)).join(" "));
+        } else {
+          setError("Registration failed. Please try again.");
+        }
+        return;
+      }
+      // Auto-login after successful registration
       await login(email, password);
       navigate("/");
     } catch (err) {
-      const detail = err.response?.data?.detail;
-      if (typeof detail === "string") {
-        setError(detail);
-      } else if (Array.isArray(detail)) {
-        setError(detail.map((d) => d.msg || JSON.stringify(d)).join(" "));
-      } else {
-        setError("Login failed. Please try again.");
-      }
+      setError("Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2" data-testid="login-page">
+    <div className="min-h-screen grid lg:grid-cols-2" data-testid="signup-page">
       {/* Left - Form */}
       <div className="flex items-center justify-center p-8 bg-background">
-        <div className="w-full max-w-sm space-y-8">
+        <div className="w-full max-w-sm space-y-6">
           <div>
             <div className="flex items-center gap-3 mb-8">
               <div className="w-10 h-10 bg-primary flex items-center justify-center">
@@ -65,22 +94,35 @@ export default function LoginPage() {
                 </p>
               </div>
             </div>
-            <h2 className="text-xl font-medium tracking-tight">Admin Login</h2>
+            <h2 className="text-xl font-medium tracking-tight">Create Admin Account</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Sign in to manage attendance
+              Register a new administrator account
             </p>
           </div>
 
           {error && (
             <div
               className="p-3 bg-destructive/10 border border-destructive/20 text-destructive text-sm"
-              data-testid="login-error"
+              data-testid="signup-error"
             >
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5" data-testid="login-form">
+          <form onSubmit={handleSubmit} className="space-y-4" data-testid="signup-form">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold tracking-[0.2em] uppercase">
+                Full Name
+              </Label>
+              <Input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="John Doe"
+                required
+                data-testid="signup-name-input"
+              />
+            </div>
             <div className="space-y-2">
               <Label className="text-xs font-bold tracking-[0.2em] uppercase">
                 Email
@@ -91,7 +133,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@example.com"
                 required
-                data-testid="login-email-input"
+                data-testid="signup-email-input"
               />
             </div>
             <div className="space-y-2">
@@ -103,39 +145,60 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter password"
+                  placeholder="Min 6 characters"
                   required
-                  data-testid="login-password-input"
+                  data-testid="signup-password-input"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  data-testid="toggle-password-btn"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold tracking-[0.2em] uppercase">
+                Confirm Password
+              </Label>
+              <Input
+                type={showPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter password"
+                required
+                data-testid="signup-confirm-password-input"
+              />
+            </div>
             <Button
               type="submit"
               className="w-full"
               disabled={loading}
-              data-testid="login-submit-button"
+              data-testid="signup-submit-button"
             >
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? "Creating Account..." : "Create Account"}
             </Button>
-            <p className="text-center text-sm text-muted-foreground mt-4">
-              Don't have an admin account?{" "}
+            <p className="text-center text-sm text-muted-foreground">
+              Already have an account?{" "}
               <Link
-                to="/signup"
+                to="/login"
                 className="text-primary font-medium hover:underline"
-                data-testid="signup-link"
+                data-testid="login-link"
               >
-                Create Account
+                Sign In
               </Link>
             </p>
           </form>
+
+          <Link
+            to="/login"
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            data-testid="back-to-login"
+          >
+            <ArrowLeft size={14} />
+            Back to login
+          </Link>
         </div>
       </div>
 
@@ -143,16 +206,16 @@ export default function LoginPage() {
       <div
         className="hidden lg:block relative bg-cover bg-center"
         style={{
-          backgroundImage: `url('https://images.pexels.com/photos/8090149/pexels-photo-8090149.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940')`,
+          backgroundImage: `url('https://images.pexels.com/photos/8090123/pexels-photo-8090123.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940')`,
         }}
       >
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
         <div className="absolute bottom-12 left-12 right-12 text-white">
           <h2 className="text-3xl font-black tracking-tight">
-            Face Recognition
+            Join the System
           </h2>
           <p className="text-sm mt-2 opacity-80">
-            Automated attendance tracking powered by computer vision
+            Set up your admin account to start managing attendance
           </p>
         </div>
       </div>

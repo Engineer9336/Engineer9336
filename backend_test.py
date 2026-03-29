@@ -207,6 +207,141 @@ class FaceAttendanceAPITester:
         )
         return success
 
+    def test_admin_registration(self):
+        """Test admin registration endpoint"""
+        # Use timestamp to ensure unique email
+        timestamp = datetime.now().strftime("%H%M%S")
+        test_admin = {
+            "name": "Test Admin",
+            "email": f"test{timestamp}@admin.com",
+            "password": "test123"
+        }
+        
+        success, response = self.run_test(
+            "Admin Registration",
+            "POST",
+            "auth/register",
+            200,
+            data=test_admin
+        )
+        
+        if success and response:
+            try:
+                data = response.json()
+                required_fields = ['id', 'email', 'name', 'role']
+                for field in required_fields:
+                    if field not in data:
+                        print(f"   ⚠️  Missing field: {field}")
+                        return False
+                print(f"   ✅ Registration successful for {data.get('email')}")
+                
+                # Check if cookies are set for auto-login
+                cookies = response.cookies
+                if 'access_token' in cookies:
+                    print(f"   ✅ Auto-login successful (access token set)")
+                else:
+                    print(f"   ⚠️  No auto-login (no access token cookie)")
+                    
+            except:
+                print(f"   ❌ Invalid JSON response")
+                return False
+        return success
+
+    def test_admin_registration_duplicate_email(self):
+        """Test admin registration with duplicate email (should fail)"""
+        duplicate_admin = {
+            "name": "Duplicate Admin",
+            "email": "admin@example.com",  # Use existing admin email
+            "password": "test456"
+        }
+        
+        success, response = self.run_test(
+            "Admin Registration - Duplicate Email (should fail)",
+            "POST",
+            "auth/register",
+            400,  # Should fail with 400
+            data=duplicate_admin
+        )
+        return success
+
+    def test_admin_registration_short_password(self):
+        """Test admin registration with short password (should fail)"""
+        short_password_admin = {
+            "name": "Short Password Admin",
+            "email": "short@admin.com",
+            "password": "123"  # Less than 6 characters
+        }
+        
+        success, response = self.run_test(
+            "Admin Registration - Short Password (should fail)",
+            "POST",
+            "auth/register",
+            400,  # Should fail with 400
+            data=short_password_admin
+        )
+        return success
+
+    def test_get_admins_list(self):
+        """Test getting list of admin accounts"""
+        # First login as admin to access protected endpoint
+        self.test_admin_login()
+        
+        success, response = self.run_test(
+            "Get Admins List",
+            "GET",
+            "admins",
+            200
+        )
+        
+        if success and response:
+            try:
+                data = response.json()
+                if isinstance(data, list):
+                    print(f"   ✅ Returns array with {len(data)} admins")
+                    # Check that password_hash is not included
+                    for admin in data:
+                        if 'password_hash' in admin:
+                            print(f"   ❌ password_hash found in response (security issue)")
+                            return False
+                        required_fields = ['email', 'name', 'role']
+                        for field in required_fields:
+                            if field not in admin:
+                                print(f"   ⚠️  Missing field {field} in admin record")
+                    print(f"   ✅ No password_hash in response (secure)")
+                else:
+                    print(f"   ❌ Expected array, got {type(data)}")
+                    return False
+            except:
+                print(f"   ❌ Invalid JSON response")
+                return False
+        return success
+
+    def test_delete_admin_not_found(self):
+        """Test deleting non-existent admin (should fail)"""
+        # First login as admin
+        self.test_admin_login()
+        
+        success, response = self.run_test(
+            "Delete Non-existent Admin (should fail)",
+            "DELETE",
+            "admins/nonexistent@admin.com",
+            404  # Should fail with 404
+        )
+        return success
+
+    def test_delete_admin_self(self):
+        """Test deleting own admin account (should fail)"""
+        # First login as admin
+        self.test_admin_login()
+        
+        success, response = self.run_test(
+            "Delete Own Admin Account (should fail)",
+            "DELETE",
+            "admins/admin@example.com",  # Current logged in admin
+            400  # Should fail with 400
+        )
+        return success
+
 def main():
     print("🚀 Starting Face Attendance API Tests")
     print("=" * 50)
@@ -223,6 +358,12 @@ def main():
         ("Attendance Logs with Date", tester.test_attendance_logs_with_date),
         ("Users List", tester.test_users_list),
         ("CSV Export", tester.test_attendance_export),
+        ("Get Admins List", tester.test_get_admins_list),
+        ("Admin Registration", tester.test_admin_registration),
+        ("Admin Registration - Duplicate Email", tester.test_admin_registration_duplicate_email),
+        ("Admin Registration - Short Password", tester.test_admin_registration_short_password),
+        ("Delete Non-existent Admin", tester.test_delete_admin_not_found),
+        ("Delete Own Admin Account", tester.test_delete_admin_self),
         ("Logout", tester.test_logout),
         ("Unauthorized Access", tester.test_unauthorized_access),
     ]

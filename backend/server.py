@@ -105,6 +105,12 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class RegisterAdminRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+
+
 class RegisterUserRequest(BaseModel):
     name: str
     employee_id: str
@@ -143,6 +149,62 @@ async def logout(response: Response):
     response.delete_cookie("access_token", path="/")
     response.delete_cookie("refresh_token", path="/")
     return {"message": "Logged out"}
+
+
+# ─── Admin Registration ───
+@api_router.post("/auth/register")
+async def register_admin(req: RegisterAdminRequest, response: Response):
+    email = req.email.lower().strip()
+    if len(req.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    if not req.name.strip():
+        raise HTTPException(status_code=400, detail="Name is required")
+
+    existing = await db.users.find_one({"email": email})
+    if existing:
+        raise HTTPException(status_code=400, detail="An account with this email already exists")
+
+    hashed = hash_password(req.password)
+    user_doc = {
+        "email": email,
+        "password_hash": hashed,
+        "name": req.name.strip(),
+        "role": "admin",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    result = await db.users.insert_one(user_doc)
+    user_id = str(result.inserted_id)
+
+    access_token = create_access_token(user_id, email)
+    refresh_token = create_refresh_token(user_id)
+    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False, samesite="lax", max_age=86400, path="/")
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
+
+    return {"id": user_id, "email": email, "name": req.name.strip(), "role": "admin"}
+
+
+# ─── Admin Management ───
+@api_router.get("/admins")
+async def get_admins(request: Request):
+    await get_current_user(request)
+    admins = await db.users.find({}, {"_id": 0, "password_hash": 0}).sort("created_at", -1).to_list(100)
+    return admins
+
+
+@api_router.delete("/admins/{email}")
+async def delete_admin(email: str, request: Request):
+    current_user = await get_current_user(request)
+    if current_user["email"] == email:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+
+    admin_count = await db.users.count_documents({})
+    if admin_count <= 1:
+        raise HTTPException(status_code=400, detail="Cannot delete the last admin account")
+
+    result = await db.users.delete_one({"email": email})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Admin not found")
+    return {"message": "Admin deleted successfully"}
 
 
 # ─── User Registration with Face Capture ───
