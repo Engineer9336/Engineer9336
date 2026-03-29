@@ -5,6 +5,7 @@ from fastapi import FastAPI, APIRouter, Request, HTTPException, Response
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
+from pymongo import ReturnDocument
 import os
 import logging
 import bcrypt
@@ -19,15 +20,20 @@ from typing import Optional, List
 import asyncio
 from pathlib import Path
 
-from face_utils import detect_face, save_face, train_model, recognize_face, FACE_DATA_DIR, MODEL_PATH
+from face_utils import detect_face, save_face, train_model, recognize_face, FACE_DATA_DIR, MODEL_PATH, OPENCV_AVAILABLE
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# MongoDB connection
+# MongoDB connection with timeout for Atlas compatibility
 mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
+client = AsyncIOMotorClient(
+    mongo_url,
+    serverSelectionTimeoutMS=5000,
+    connectTimeoutMS=10000,
+    socketTimeoutMS=10000
+)
 db = client[os.environ['DB_NAME']]
 
 app = FastAPI()
@@ -156,7 +162,7 @@ async def register_user(req: RegisterUserRequest, request: Request):
         {"_id": "user_label"},
         {"$inc": {"seq": 1}},
         upsert=True,
-        return_document=True
+        return_document=ReturnDocument.AFTER
     )
     label = counter["seq"]
 
@@ -365,6 +371,19 @@ async def root():
     return {"message": "Face Attendance API is running"}
 
 
+@api_router.get("/health")
+async def health_check():
+    """Dedicated health check endpoint for Kubernetes liveness/readiness probes."""
+    health = {"status": "healthy", "opencv_available": OPENCV_AVAILABLE}
+    try:
+        await db.command("ping")
+        health["database"] = "connected"
+    except Exception as e:
+        health["database"] = f"error: {str(e)}"
+        health["status"] = "degraded"
+    return health
+
+
 # ─── Admin Seeding ───
 async def seed_admin():
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@example.com")
@@ -390,12 +409,32 @@ async def seed_admin():
 
 @app.on_event("startup")
 async def startup():
-    await seed_admin()
-    await db.users.create_index("email", unique=True)
-    await db.registered_users.create_index("employee_id", unique=True)
-    await db.attendance.create_index([("employee_id", 1), ("date", 1)])
-    FACE_DATA_DIR.mkdir(parents=True, exist_ok=True)
-    logger.info("Application started successfully")
+    try:
+        # Test MongoDB connection first
+        await db.command("ping")
+        logger.info("MongoDB connection successful")
+    except Exception as e:
+        logger.error(f"MongoDB connection failed: {e}")
+        # Don't crash - let the app start and health check will report degraded
+
+    try:
+        await seed_admin()
+    except Exception as e:
+        logger.error(f"Admin seeding failed: {e}")
+
+    try:
+        await db.users.create_index("email", unique=True)
+        await db.registered_users.create_index("employee_id", unique=True)
+        await db.attendance.create_index([("employee_id", 1), ("date", 1)])
+    except Exception as e:
+        logger.error(f"Index creation failed: {e}")
+
+    try:
+        FACE_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        logger.error(f"Face data directory creation failed: {e}")
+
+    logger.info(f"Application started successfully (OpenCV: {OPENCV_AVAILABLE})")
 
 
 @app.on_event("shutdown")
