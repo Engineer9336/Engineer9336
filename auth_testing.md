@@ -39,5 +39,5 @@ curl -b cookies.txt -X POST "$API_URL/api/auth/logout"
 ```
 
 ## Admin Credentials
-- Email: aryam19@amin.com
+- Email: aryam19@admin.com
 - Password: aryam123
